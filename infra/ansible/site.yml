@@ -1,0 +1,8 @@
+---
+- name: Deploy Foodgram application
+  hosts: local
+  become: no
+  roles:
+    - prerequisites
+    - nginx
+    - app

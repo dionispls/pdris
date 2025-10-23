@@ -1,0 +1,19 @@
+---
+- name: Copy docker-compose.yml
+  copy:
+    src: files/docker-compose.yml
+    dest: "{{ ansible_env.HOME }}/foodgram/docker-compose.yml"
+    owner: "{{ ansible_env.USER }}"
+    group: staff
+    mode: '0644'
+
+- name: Copy deploy script
+  copy:
+    src: files/deploy.sh
+    dest: "{{ ansible_env.HOME }}/foodgram/deploy.sh"
+    owner: "{{ ansible_env.USER }}"
+    group: staff
+    mode: '0755'
+
+- name: Run deploy script
+  command: "{{ ansible_env.HOME }}/foodgram/deploy.sh"
