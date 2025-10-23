@@ -13,6 +13,8 @@ DB_HOST=db
 DB_PORT=5432
 
 # Django settings
+CORS_ALLOWED_ORIGINS=http://localhost,http://127.0.0.1
+CSRF_TRUSTED_ORIGINS=http://localhost,http://127.0.0.1
 SITE_DOMAIN=localhost:8000
 SECRET_KEY=django-insecure-your-secret-key-here-change-in-production
 DEBUG=True
@@ -25,6 +27,7 @@ STATIC_ROOT=/app/static/
 # Media files
 MEDIA_URL=/media/
 MEDIA_ROOT=/app/media/
+
 ```
 3) Перейдите в папку `infra` и выполните сборку контейнеров:
     ```sh
