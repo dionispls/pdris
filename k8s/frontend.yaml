@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: foodgram-frontend
-  namespace: foodgram
+  namespace: default
   labels:
     app: foodgram-frontend
 spec:

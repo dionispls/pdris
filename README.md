@@ -37,7 +37,7 @@ MEDIA_ROOT=/app/media/
 1) Соберите Docker образы:
 ```bash
 cd backend
-docker build -t foodgram-backend:latest .
+docker build -t foodgram-app:latest .
 
 cd ../frontend
 docker build -t foodgram-frontend:latest .
@@ -50,7 +50,6 @@ kubectl apply -f k8s/
 
 Или по отдельности:
 ```bash
-kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/secret.yaml
 kubectl apply -f k8s/configmap-nginx.yaml
 kubectl apply -f k8s/pvc.yaml
@@ -63,23 +62,23 @@ kubectl apply -f k8s/ingress.yaml
 
 3) Проверьте статус подов:
 ```bash
-kubectl get pods -n foodgram
+kubectl get pods
 ```
 
 4) Выполните миграции Django:
 ```bash
-POD=$(kubectl get pod -n foodgram -l app=foodgram-backend -o jsonpath='{.items[0].metadata.name}')
-kubectl exec -it $POD -n foodgram -- python manage.py migrate
-kubectl exec -it $POD -n foodgram -- python manage.py collectstatic --noinput
+POD=$(kubectl get pod -l app=foodgram-backend -o jsonpath='{.items[0].metadata.name}')
+kubectl exec -it $POD -- python manage.py migrate
+kubectl exec -it $POD -- python manage.py collectstatic --noinput
 ```
 
 5) Откройте приложение:
 ```bash
-kubectl port-forward -n foodgram svc/foodgram-nginx 8080:80
+kubectl port-forward svc/foodgram-nginx 8080:80
 ```
 Откройте http://localhost:8080
 
 
 Полезные команды:
-- Логи: `kubectl logs -f deployment/foodgram-backend -n foodgram`
+- Логи: `kubectl logs -f deployment/foodgram-backend`
 - Удалить все: `kubectl delete -f k8s/`
