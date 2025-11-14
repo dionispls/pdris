@@ -1,0 +1,158 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: foodgram-backend
+  namespace: foodgram
+  labels:
+    app: foodgram-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: foodgram-backend
+  template:
+    metadata:
+      labels:
+        app: foodgram-backend
+    spec:
+      containers:
+      - name: backend
+        image: foodgram-backend:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: foodgram-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: foodgram-secrets
+              key: POSTGRES_PASSWORD
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: foodgram-secrets
+              key: DB_NAME
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: foodgram-secrets
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            secretKeyRef:
+              name: foodgram-secrets
+              key: DB_PORT
+        - name: DB_ENGINE
+          valueFrom:
+            secretKeyRef:
+              name: foodgram-secrets
+              key: DB_ENGINE
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: foodgram-secrets
+              key: SECRET_KEY
+        - name: DEBUG
+          valueFrom:
+            secretKeyRef:
+              name: foodgram-secrets
+              key: DEBUG
+        - name: ALLOWED_HOSTS
+          valueFrom:
+            secretKeyRef:
+              name: foodgram-secrets
+              key: ALLOWED_HOSTS
+        - name: SITE_DOMAIN
+          valueFrom:
+            secretKeyRef:
+              name: foodgram-secrets
+              key: SITE_DOMAIN
+        - name: CORS_ALLOWED_ORIGINS
+          valueFrom:
+            secretKeyRef:
+              name: foodgram-secrets
+              key: CORS_ALLOWED_ORIGINS
+        - name: CSRF_TRUSTED_ORIGINS
+          valueFrom:
+            secretKeyRef:
+              name: foodgram-secrets
+              key: CSRF_TRUSTED_ORIGINS
+        - name: STATIC_URL
+          valueFrom:
+            secretKeyRef:
+              name: foodgram-secrets
+              key: STATIC_URL
+        - name: STATIC_ROOT
+          valueFrom:
+            secretKeyRef:
+              name: foodgram-secrets
+              key: STATIC_ROOT
+        - name: MEDIA_URL
+          valueFrom:
+            secretKeyRef:
+              name: foodgram-secrets
+              key: MEDIA_URL
+        - name: MEDIA_ROOT
+          valueFrom:
+            secretKeyRef:
+              name: foodgram-secrets
+              key: MEDIA_ROOT
+        - name: USE_SQLITE
+          valueFrom:
+            secretKeyRef:
+              name: foodgram-secrets
+              key: USE_SQLITE
+        volumeMounts:
+        - name: static-storage
+          mountPath: /app/static
+        - name: media-storage
+          mountPath: /app/media
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: static-storage
+        persistentVolumeClaim:
+          claimName: static-data
+      - name: media-storage
+        persistentVolumeClaim:
+          claimName: media-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: foodgram-backend
+  namespace: foodgram
+  labels:
+    app: foodgram-backend
+spec:
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: foodgram-backend
+  type: ClusterIP
