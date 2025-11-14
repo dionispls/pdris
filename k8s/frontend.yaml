@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: foodgram-frontend
+  namespace: default
+  labels:
+    app: foodgram-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: foodgram-frontend
+  template:
+    metadata:
+      labels:
+        app: foodgram-frontend
+    spec:
+      initContainers:
+      - name: copy-build
+        image: foodgram-frontend:latest
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          if [ -d /app/result_build ]; then
+            cp -r /app/result_build/* /shared/build/ 2>/dev/null || true
+          else
+            if [ -d /app/build ]; then
+              cp -r /app/build/* /shared/build/ 2>/dev/null || true
+            fi
+          fi
+          ls -la /shared/build/ || true
+        volumeMounts:
+        - name: build-output
+          mountPath: /shared/build
+      containers:
+      - name: frontend
+        image: busybox:latest
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          tail -f /dev/null
+        volumeMounts:
+        - name: build-output
+          mountPath: /shared/build
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+      volumes:
+      - name: build-output
+        persistentVolumeClaim:
+          claimName: static-data
