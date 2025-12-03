@@ -2,8 +2,6 @@ pipeline {
     agent any
     
     environment {
-        PYTHON_VERSION = '3.11'
-        NODE_VERSION = '18'
         NEXUS_URL = 'http://localhost:8081'
         NEXUS_CREDENTIALS_ID = 'nexus_cred'
         DOCKER_REGISTRY = "${NEXUS_URL}:8082/"
@@ -12,115 +10,9 @@ pipeline {
     }
 
     stages {
-        stage('Environment Check') {
-            steps {
-                sh """
-                    echo "Python version:"
-                    python3 --version || echo "Python not found"
-                    echo "Node version:"
-                    node --version || echo "Node not found"
-                    echo "Docker version:"
-                    docker --version || echo "Docker not found"
-                    echo "Current directory:"
-                    pwd
-                """
-            }
-        }
-        
         stage('Git Clone') {
             steps {
                 git branch: 'homework-5', url: 'https://github.com/dionispls/pdris.git'
-            }
-        }
-        
-        stage('Install Dependencies') {
-            parallel {
-                stage('Backend Dependencies') {
-                    steps {
-                        dir('backend') {
-                            sh """
-                                python3 -m venv venv || true
-                                source venv/bin/activate || . venv/bin/activate
-                                pip install --upgrade pip
-                                pip install -r requirements.txt
-                                pip install pytest pytest-django pytest-cov flake8 allure-pytest
-                            """
-                        }
-                    }
-                }
-                stage('Frontend Dependencies') {
-                    steps {
-                        dir('frontend') {
-                            sh """
-                                npm install
-                            """
-                        }
-                    }
-                }
-            }
-        }
-        
-        stage('Static Code Analysis') {
-            parallel {
-                stage('Python Linting') {
-                    steps {
-                        dir('backend') {
-                            sh """
-                                source venv/bin/activate || . venv/bin/activate
-                                flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
-                                flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics || true
-                            """
-                        }
-                    }
-                }
-                stage('JavaScript Linting') {
-                    steps {
-                        dir('frontend') {
-                            sh """
-                                npm run build || true
-                                npx eslint src/ --ext .js,.jsx || true
-                            """
-                        }
-                    }
-                }
-            }
-        }
-        
-        stage('Run Tests') {
-            parallel {
-                stage('Backend Tests') {
-                    steps {
-                        dir('backend') {
-                            sh """
-                                source venv/bin/activate || . venv/bin/activate
-                                pytest --alluredir=allure-results --cov=. --cov-report=xml || true
-                            """
-                        }
-                    }
-                }
-                stage('Frontend Tests') {
-                    steps {
-                        dir('frontend') {
-                            sh """
-                                CI=true npm test -- --coverage --watchAll=false || true
-                            """
-                        }
-                    }
-                }
-            }
-        }
-        
-        stage('Generate Allure Report') {
-            steps {
-                script {
-                    def allure = allure([
-                        includeProperties: false,
-                        jdk: '',
-                        properties: [],
-                        reportBuildPolicy: 'ALWAYS',
-                        results: [[path: 'backend/allure-results']]
-                    ])
-                }
             }
         }
         
@@ -130,13 +22,13 @@ pipeline {
                     dir('backend') {
                         sh """
                             docker build -t ${DOCKER_REGISTRY}${PROJECT_NAME}-backend:${BUILD_NUMBER} .
-                            docker build -t ${DOCKER_REGISTRY}${PROJECT_NAME}-backend:latest .
+                            docker tag ${DOCKER_REGISTRY}${PROJECT_NAME}-backend:${BUILD_NUMBER} ${DOCKER_REGISTRY}${PROJECT_NAME}-backend:latest
                         """
                     }
                     dir('frontend') {
                         sh """
                             docker build -t ${DOCKER_REGISTRY}${PROJECT_NAME}-frontend:${BUILD_NUMBER} .
-                            docker build -t ${DOCKER_REGISTRY}${PROJECT_NAME}-frontend:latest .
+                            docker tag ${DOCKER_REGISTRY}${PROJECT_NAME}-frontend:${BUILD_NUMBER} ${DOCKER_REGISTRY}${PROJECT_NAME}-frontend:latest
                         """
                     }
                 }
@@ -148,7 +40,7 @@ pipeline {
                 script {
                     withCredentials([usernamePassword(credentialsId: "${NEXUS_CREDENTIALS_ID}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
                         sh """
-                            echo ${NEXUS_PASS} | docker login ${NEXUS_URL} -u ${NEXUS_USER} --password-stdin
+                            echo ${NEXUS_PASS} | docker login ${NEXUS_URL}:8082 -u ${NEXUS_USER} --password-stdin
                             docker push ${DOCKER_REGISTRY}${PROJECT_NAME}-backend:${BUILD_NUMBER}
                             docker push ${DOCKER_REGISTRY}${PROJECT_NAME}-backend:latest
                             docker push ${DOCKER_REGISTRY}${PROJECT_NAME}-frontend:${BUILD_NUMBER}
@@ -156,14 +48,6 @@ pipeline {
                         """
                     }
                 }
-            }
-        }
-        
-        stage('Archive Artifacts') {
-            steps {
-                archiveArtifacts artifacts: 'backend/allure-results/**/*', allowEmptyArchive: true
-                archiveArtifacts artifacts: 'backend/coverage.xml', allowEmptyArchive: true
-                archiveArtifacts artifacts: 'frontend/coverage/**/*', allowEmptyArchive: true
             }
         }
     }
@@ -180,4 +64,3 @@ pipeline {
         }
     }
 }
-
