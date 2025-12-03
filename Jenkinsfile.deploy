@@ -51,7 +51,6 @@ pipeline {
                         tar czf - . | docker run --rm -i \
                             -v /var/run/docker.sock:/var/run/docker.sock \
                             -v /var/jenkins_home:/var/jenkins_home \
-                            -v /usr/bin/docker:/usr/bin/docker:ro \
                             -e HOME=/var/jenkins_home \
                             -e DOCKER_HOST=unix:///var/run/docker.sock \
                             -w /ansible \
@@ -64,8 +63,26 @@ pipeline {
                                     -e 'docker_backend_image=${PROJECT_NAME}-backend:${BUILD_NUMBER}' \
                                     -e 'docker_frontend_image=${PROJECT_NAME}-frontend:${BUILD_NUMBER}' \
                                     -e 'ansible_env_HOME=/var/jenkins_home' \
-                                    --connection=local
+                                    --connection=local \
+                                    --skip-tags deploy
                             "
+                    """
+                }
+            }
+        }
+        
+        stage('Deploy Application') {
+            steps {
+                script {
+                    sh """
+                        if [ -f /var/jenkins_home/foodgram/deploy.sh ]; then
+                            chmod +x /var/jenkins_home/foodgram/deploy.sh
+                            cd /var/jenkins_home/foodgram
+                            bash deploy.sh
+                        else
+                            echo "Deploy script not found!"
+                            exit 1
+                        fi
                     """
                 }
             }

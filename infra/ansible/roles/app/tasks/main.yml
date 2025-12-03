@@ -42,3 +42,6 @@
     executable: /bin/bash
   environment:
     DOCKER_HOST: "unix:///var/run/docker.sock"
+    PATH: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  tags:
+    - deploy
