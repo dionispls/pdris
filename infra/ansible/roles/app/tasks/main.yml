@@ -30,9 +30,15 @@
     dest: "{{ ansible_env.HOME }}/foodgram/deploy.sh"
     mode: '0755'
 
+- name: Ensure deploy script is executable
+  file:
+    path: "{{ ansible_env.HOME }}/foodgram/deploy.sh"
+    mode: '0755'
+
 - name: Run deploy script
-  shell: "{{ ansible_env.HOME }}/foodgram/deploy.sh"
+  shell: "bash {{ ansible_env.HOME }}/foodgram/deploy.sh"
   args:
     chdir: "{{ ansible_env.HOME }}/foodgram"
+    executable: /bin/bash
   environment:
     DOCKER_HOST: "unix:///var/run/docker.sock"
