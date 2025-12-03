@@ -4,7 +4,7 @@ pipeline {
     environment {
         NEXUS_URL = "http://localhost:8081"
         NEXUS_CREDENTIALS_ID = "nexus_cred"
-        DOCKER_REGISTRY = "${NEXUS_URL}:8082/"
+        DOCKER_REGISTRY = "localhost:8082"
         PROJECT_NAME = 'foodgram'
         BUILD_NUMBER = "${params.BUILD_NUMBER ?: 'latest'}"
         ANSIBLE_HOST = "${params.ANSIBLE_HOST ?: 'localhost'}"
@@ -16,46 +16,54 @@ pipeline {
     }
 
     stages {
+        stage('Checkout') {
+            steps {
+                checkout scm: [
+                    $class: 'GitSCM',
+                    branches: [[name: 'homework-5']],
+                    userRemoteConfigs: [[url: 'https://github.com/dionispls/pdris.git']]
+                ]
+            }
+        }
+        
         stage('Download from Nexus') {
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: "${NEXUS_CREDENTIALS_ID}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
                         sh """
-                            echo ${NEXUS_PASS} | docker login ${NEXUS_URL} -u ${NEXUS_USER} --password-stdin
-                            docker pull ${DOCKER_REGISTRY}${PROJECT_NAME}-backend:${BUILD_NUMBER}
-                            docker pull ${DOCKER_REGISTRY}${PROJECT_NAME}-frontend:${BUILD_NUMBER}
-                            docker tag ${DOCKER_REGISTRY}${PROJECT_NAME}-backend:${BUILD_NUMBER} ${PROJECT_NAME}-backend:${BUILD_NUMBER}
-                            docker tag ${DOCKER_REGISTRY}${PROJECT_NAME}-frontend:${BUILD_NUMBER} ${PROJECT_NAME}-frontend:${BUILD_NUMBER}
+                            echo ${NEXUS_PASS} | docker login ${DOCKER_REGISTRY} -u ${NEXUS_USER} --password-stdin
+                            docker pull ${DOCKER_REGISTRY}/${PROJECT_NAME}-backend:${BUILD_NUMBER}
+                            docker pull ${DOCKER_REGISTRY}/${PROJECT_NAME}-frontend:${BUILD_NUMBER}
+                            docker tag ${DOCKER_REGISTRY}/${PROJECT_NAME}-backend:${BUILD_NUMBER} ${PROJECT_NAME}-backend:${BUILD_NUMBER}
+                            docker tag ${DOCKER_REGISTRY}/${PROJECT_NAME}-frontend:${BUILD_NUMBER} ${PROJECT_NAME}-frontend:${BUILD_NUMBER}
                         """
                     }
                 }
             }
         }
         
-        stage('Prepare Ansible') {
-            steps {
-                sh """
-                    python3 -m pip install --user ansible || pip3 install --user ansible
-                    export PATH=\$PATH:~/.local/bin
-                    ansible --version
-                """
-            }
-        }
-        
         stage('Run Ansible') {
             steps {
-                dir('infra/ansible') {
-                    script {
-                        def inventoryFile = 'inventory'
-                        def playbookFile = 'site.yml'
-                        
-                        sh """
-                            export PATH=\$PATH:~/.local/bin
-                            ansible-playbook -i ${inventoryFile} ${playbookFile} \
-                                -e "docker_backend_image=${PROJECT_NAME}-backend:${BUILD_NUMBER}" \
-                                -e "docker_frontend_image=${PROJECT_NAME}-frontend:${BUILD_NUMBER}"
-                        """
-                    }
+                script {
+                    def ansibleDir = "${WORKSPACE}/infra/ansible"
+                    sh """
+                        cd ${ansibleDir} &&
+                        tar czf - . | docker run --rm -i \
+                            -v /var/run/docker.sock:/var/run/docker.sock \
+                            -v /var/jenkins_home:/var/jenkins_home \
+                            -e HOME=/var/jenkins_home \
+                            -w /ansible \
+                            python:3.11-slim bash -c "
+                                pip install ansible docker docker-compose &&
+                                tar xzf - &&
+                                echo 'Contents of /ansible:' &&
+                                ls -la /ansible &&
+                                ansible-playbook -i inventory site.yml \
+                                    -e 'docker_backend_image=${PROJECT_NAME}-backend:${BUILD_NUMBER}' \
+                                    -e 'docker_frontend_image=${PROJECT_NAME}-frontend:${BUILD_NUMBER}' \
+                                    -e 'ansible_env_HOME=/var/jenkins_home'
+                            "
+                    """
                 }
             }
         }

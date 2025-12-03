@@ -8,6 +8,4 @@
   copy:
     src: files/nginx.conf
     dest: "{{ ansible_env.HOME }}/foodgram/nginx.conf"
-    owner: "{{ ansible_env.USER }}"
-    group: staff
     mode: '0644'

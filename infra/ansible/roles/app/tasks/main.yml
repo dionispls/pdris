@@ -3,32 +3,24 @@
   file:
     path: "{{ ansible_env.HOME }}/foodgram"
     state: directory
-    owner: "{{ ansible_env.USER }}"
-    group: staff
     mode: '0755'
 
 - name: Copy docker-compose.yml template
   template:
     src: docker-compose.yml.j2
     dest: "{{ ansible_env.HOME }}/foodgram/docker-compose.yml"
-    owner: "{{ ansible_env.USER }}"
-    group: staff
     mode: '0644'
 
 - name: Copy nginx.conf
   copy:
     src: "{{ playbook_dir }}/roles/nginx/files/nginx.conf"
     dest: "{{ ansible_env.HOME }}/foodgram/nginx.conf"
-    owner: "{{ ansible_env.USER }}"
-    group: staff
     mode: '0644'
 
 - name: Copy .env file if exists
   copy:
     src: "{{ playbook_dir }}/../.env"
     dest: "{{ ansible_env.HOME }}/foodgram/.env"
-    owner: "{{ ansible_env.USER }}"
-    group: staff
     mode: '0644'
   ignore_errors: yes
 
@@ -36,11 +28,11 @@
   template:
     src: deploy.sh.j2
     dest: "{{ ansible_env.HOME }}/foodgram/deploy.sh"
-    owner: "{{ ansible_env.USER }}"
-    group: staff
     mode: '0755'
 
 - name: Run deploy script
-  command: "{{ ansible_env.HOME }}/foodgram/deploy.sh"
+  shell: "{{ ansible_env.HOME }}/foodgram/deploy.sh"
   args:
     chdir: "{{ ansible_env.HOME }}/foodgram"
+  environment:
+    DOCKER_HOST: "unix:///var/run/docker.sock"
