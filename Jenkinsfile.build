@@ -10,6 +10,16 @@ pipeline {
     }
 
     stages {
+        stage('Checkout') {
+            steps {
+                checkout scm: [
+                    $class: 'GitSCM',
+                    branches: [[name: 'homework-5']],
+                    userRemoteConfigs: [[url: 'https://github.com/dionispls/pdris.git']]
+                ]
+            }
+        }
+        
         stage('Build Docker Images') {
             steps {
                 script {
