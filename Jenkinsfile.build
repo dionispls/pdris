@@ -61,10 +61,10 @@ pipeline {
             cleanWs()
         }
         success {
-            echo "Build successful! Images pushed to Nexus"
+            echo "OK"
         }
         failure {
-            echo "Build failed!"
+            echo "Failed"
         }
     }
 }
