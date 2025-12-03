@@ -1,11 +1,6 @@
 pipeline {
     agent any
     
-    tools {
-        // Для Python проекта нужны другие инструменты
-        // jdk 'jdk17' - не нужен для Python
-    }
-    
     environment {
         PYTHON_VERSION = '3.11'
         NODE_VERSION = '18'
