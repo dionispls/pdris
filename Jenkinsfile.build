@@ -10,12 +10,6 @@ pipeline {
     }
 
     stages {
-        stage('Git Clone') {
-            steps {
-                git branch: 'homework-5', url: 'https://github.com/dionispls/pdris.git'
-            }
-        }
-        
         stage('Build Docker Images') {
             steps {
                 script {

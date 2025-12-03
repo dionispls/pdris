@@ -8,8 +8,6 @@ pipeline {
         PROJECT_NAME = 'foodgram'
         BUILD_NUMBER = "${params.BUILD_NUMBER ?: 'latest'}"
         ANSIBLE_HOST = "${params.ANSIBLE_HOST ?: 'localhost'}"
-        ANSIBLE_REPO_URL = 'file:///Users/kate/pdris'
-        ANSIBLE_BRANCH = 'homework-5'
     }
     
     parameters {
@@ -31,12 +29,6 @@ pipeline {
                         """
                     }
                 }
-            }
-        }
-        
-        stage('Git Clone Ansible') {
-            steps {
-                git branch: "${ANSIBLE_BRANCH}", url: 'https://github.com/dionispls/pdris.git'
             }
         }
         
