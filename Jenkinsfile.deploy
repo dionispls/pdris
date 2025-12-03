@@ -54,7 +54,7 @@ pipeline {
                             -e HOME=/var/jenkins_home \
                             -w /ansible \
                             python:3.11-slim bash -c "
-                                pip install ansible docker docker-compose &&
+                                pip install ansible docker &&
                                 tar xzf - &&
                                 echo 'Contents of /ansible:' &&
                                 ls -la /ansible &&

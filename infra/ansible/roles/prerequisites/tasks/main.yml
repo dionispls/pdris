@@ -5,7 +5,7 @@
   ignore_errors: yes
 
 - name: Ensure Docker Compose is available
-  command: docker-compose --version
+  command: docker compose version
   register: docker_compose_check
   ignore_errors: yes
 
