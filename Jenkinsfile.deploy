@@ -1,0 +1,93 @@
+pipeline {
+    agent any
+    
+    environment {
+        NEXUS_URL = "http://localhost:8081"
+        NEXUS_CREDENTIALS_ID = "nexus_cred"
+        DOCKER_REGISTRY = "${NEXUS_URL}:8082/"
+        PROJECT_NAME = 'foodgram'
+        BUILD_NUMBER = "${params.BUILD_NUMBER ?: 'latest'}"
+        ANSIBLE_HOST = "${params.ANSIBLE_HOST ?: 'localhost'}"
+        ANSIBLE_REPO_URL = 'file:///Users/kate/pdris'
+        ANSIBLE_BRANCH = 'homework-5'
+    }
+    
+    parameters {
+        string(name: 'BUILD_NUMBER', defaultValue: 'latest', description: 'Build number to deploy')
+        string(name: 'ANSIBLE_HOST', defaultValue: 'localhost', description: 'Target host for deployment')
+    }
+
+    stages {
+        stage('Download from Nexus') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: "${NEXUS_CREDENTIALS_ID}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+                        sh """
+                            echo ${NEXUS_PASS} | docker login ${NEXUS_URL} -u ${NEXUS_USER} --password-stdin
+                            docker pull ${DOCKER_REGISTRY}${PROJECT_NAME}-backend:${BUILD_NUMBER}
+                            docker pull ${DOCKER_REGISTRY}${PROJECT_NAME}-frontend:${BUILD_NUMBER}
+                            docker tag ${DOCKER_REGISTRY}${PROJECT_NAME}-backend:${BUILD_NUMBER} ${PROJECT_NAME}-backend:${BUILD_NUMBER}
+                            docker tag ${DOCKER_REGISTRY}${PROJECT_NAME}-frontend:${BUILD_NUMBER} ${PROJECT_NAME}-frontend:${BUILD_NUMBER}
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Git Clone Ansible') {
+            steps {
+                git branch: "${ANSIBLE_BRANCH}", url: 'https://github.com/dionispls/pdris.git'
+            }
+        }
+        
+        stage('Prepare Ansible') {
+            steps {
+                sh """
+                    python3 -m pip install --user ansible || pip3 install --user ansible
+                    export PATH=\$PATH:~/.local/bin
+                    ansible --version
+                """
+            }
+        }
+        
+        stage('Run Ansible') {
+            steps {
+                dir('infra/ansible') {
+                    script {
+                        def inventoryFile = 'inventory'
+                        def playbookFile = 'site.yml'
+                        
+                        sh """
+                            export PATH=\$PATH:~/.local/bin
+                            ansible-playbook -i ${inventoryFile} ${playbookFile} \
+                                -e "docker_backend_image=${PROJECT_NAME}-backend:${BUILD_NUMBER}" \
+                                -e "docker_frontend_image=${PROJECT_NAME}-frontend:${BUILD_NUMBER}"
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Verify Deployment') {
+            steps {
+                sh """
+                    echo "Checking if containers are running..."
+                    docker ps | grep ${PROJECT_NAME} || echo "Containers not found"
+                """
+            }
+        }
+    }
+    
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo "Deployment successful!"
+        }
+        failure {
+            echo "Deployment failed!"
+        }
+    }
+}
+

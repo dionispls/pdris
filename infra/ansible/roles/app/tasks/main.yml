@@ -1,15 +1,40 @@
 ---
-- name: Copy docker-compose.yml
-  copy:
-    src: files/docker-compose.yml
+- name: Create foodgram directory
+  file:
+    path: "{{ ansible_env.HOME }}/foodgram"
+    state: directory
+    owner: "{{ ansible_env.USER }}"
+    group: staff
+    mode: '0755'
+
+- name: Copy docker-compose.yml template
+  template:
+    src: docker-compose.yml.j2
     dest: "{{ ansible_env.HOME }}/foodgram/docker-compose.yml"
     owner: "{{ ansible_env.USER }}"
     group: staff
     mode: '0644'
 
-- name: Copy deploy script
+- name: Copy nginx.conf
   copy:
-    src: files/deploy.sh
+    src: "{{ playbook_dir }}/roles/nginx/files/nginx.conf"
+    dest: "{{ ansible_env.HOME }}/foodgram/nginx.conf"
+    owner: "{{ ansible_env.USER }}"
+    group: staff
+    mode: '0644'
+
+- name: Copy .env file if exists
+  copy:
+    src: "{{ playbook_dir }}/../.env"
+    dest: "{{ ansible_env.HOME }}/foodgram/.env"
+    owner: "{{ ansible_env.USER }}"
+    group: staff
+    mode: '0644'
+  ignore_errors: yes
+
+- name: Copy deploy script
+  template:
+    src: deploy.sh.j2
     dest: "{{ ansible_env.HOME }}/foodgram/deploy.sh"
     owner: "{{ ansible_env.USER }}"
     group: staff
@@ -17,3 +42,5 @@
 
 - name: Run deploy script
   command: "{{ ansible_env.HOME }}/foodgram/deploy.sh"
+  args:
+    chdir: "{{ ansible_env.HOME }}/foodgram"
