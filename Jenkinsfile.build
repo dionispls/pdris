@@ -33,6 +33,8 @@ pipeline {
                             export SECRET_KEY=test-key
                             export DEBUG=False
                             export SITE_DOMAIN=localhost
+                            export CORS_ALLOWED_ORIGINS=http://localhost:3000
+                            export CSRF_TRUSTED_ORIGINS=http://localhost:3000
                             export DJANGO_SETTINGS_MODULE=foodgram.settings
                             venv/bin/pytest api/tests.py --cov=. --cov-report=xml --cov-report=html --junitxml=test-results.xml -v
                         """
@@ -41,7 +43,15 @@ pipeline {
             }
             post {
                 always {
-                    junit 'backend/test-results.xml'
+                    script {
+                        try {
+                            if (fileExists('backend/test-results.xml')) {
+                                junit 'backend/test-results.xml'
+                            }
+                        } catch (Exception e) {
+                            echo "JUnit skipped: ${e.getMessage()}"
+                        }
+                    }
                 }
             }
         }
