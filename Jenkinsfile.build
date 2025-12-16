@@ -35,6 +35,7 @@ pipeline {
                             export SITE_DOMAIN=localhost
                             export CORS_ALLOWED_ORIGINS=http://localhost:3000
                             export CSRF_TRUSTED_ORIGINS=http://localhost:3000
+                            export USE_SQLITE=True
                             export DJANGO_SETTINGS_MODULE=foodgram.settings
                             venv/bin/pytest api/tests.py --cov=. --cov-report=xml --cov-report=html --junitxml=test-results.xml -v
                         """
