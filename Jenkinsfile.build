@@ -91,16 +91,18 @@ pipeline {
             }
             post {
                 always {
-                    try {
-                        allure([
-                            includeProperties: false,
-                            jdk: '',
-                            properties: [],
-                            reportBuildPolicy: 'ALWAYS',
-                            results: [[path: 'allure-results']]
-                        ])
-                    } catch (Exception e) {
-                        echo "Allure skipped: ${e.getMessage()}"
+                    script {
+                        try {
+                            allure([
+                                includeProperties: false,
+                                jdk: '',
+                                properties: [],
+                                reportBuildPolicy: 'ALWAYS',
+                                results: [[path: 'allure-results']]
+                            ])
+                        } catch (Exception e) {
+                            echo "Allure skipped: ${e.getMessage()}"
+                        }
                     }
                 }
             }
