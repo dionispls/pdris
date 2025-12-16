@@ -80,11 +80,13 @@ pipeline {
                         } catch (Exception e) {
                             echo "SonarQube token not found"
                         }
-                        def sonarCmd = "sonar-scanner -Dsonar.projectKey=${PROJECT_NAME} -Dsonar.sources=backend,frontend/src -Dsonar.host.url=${SONAR_HOST_URL}"
-                        if (sonarToken) {
-                            sonarCmd += " -Dsonar.login=${sonarToken}"
-                        }
-                        sh sonarCmd
+                        sh """
+                            sonar-scanner \\
+                                -Dsonar.projectKey=${PROJECT_NAME} \\
+                                -Dsonar.sources=backend,frontend/src \\
+                                -Dsonar.host.url=${SONAR_HOST_URL} \\
+                                ${sonarToken ? "-Dsonar.login=${sonarToken}" : ''}
+                        """
                     } catch (Exception e) {
                         echo "SonarQube skipped: ${e.getMessage()}"
                     }
@@ -112,7 +114,7 @@ pipeline {
                                 reportBuildPolicy: 'ALWAYS',
                                 results: [[path: 'allure-results']]
                             ])
-                        } catch (Exception e) {
+                        } catch (Throwable e) {
                             echo "Allure skipped: ${e.getMessage()}"
                         }
                     }
