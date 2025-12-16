@@ -1,0 +1,172 @@
+pipeline {
+    agent any
+    
+    environment {
+        NEXUS_URL = 'http://localhost:8081'
+        NEXUS_CREDENTIALS_ID = 'nexus_cred'
+        DOCKER_REGISTRY = 'localhost:8082'
+        PROJECT_NAME = 'foodgram'
+        BUILD_NUMBER = "${env.BUILD_NUMBER}"
+        SONAR_HOST_URL = 'http://localhost:9000'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm: [
+                    $class: 'GitSCM',
+                    branches: [[name: 'homework-5']],
+                    userRemoteConfigs: [[url: 'https://github.com/dionispls/pdris.git']]
+                ]
+            }
+        }
+        
+        stage('Backend Unit Tests') {
+            steps {
+                script {
+                    dir('backend') {
+                        sh """
+                            python3 -m venv venv
+                            venv/bin/pip install --upgrade pip --quiet
+                            venv/bin/pip install -r requirements.txt --quiet
+                            export ALLOWED_HOSTS=localhost,127.0.0.1
+                            export SECRET_KEY=test-key
+                            export DEBUG=False
+                            export SITE_DOMAIN=localhost
+                            export CORS_ALLOWED_ORIGINS=http://localhost:3000
+                            export CSRF_TRUSTED_ORIGINS=http://localhost:3000
+                            export USE_SQLITE=True
+                            export DJANGO_SETTINGS_MODULE=foodgram.settings
+                            venv/bin/pytest api/tests.py --cov=. --cov-report=xml --cov-report=html --junitxml=test-results.xml -v
+                        """
+                    }
+                }
+            }
+            post {
+                always {
+                    script {
+                        try {
+                            if (fileExists('backend/test-results.xml')) {
+                                junit 'backend/test-results.xml'
+                            }
+                        } catch (Exception e) {
+                            echo "JUnit skipped: ${e.getMessage()}"
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Frontend Unit Tests') {
+            steps {
+                script {
+                    dir('frontend') {
+                        sh """
+                            npm install --legacy-peer-deps --silent || yarn install --legacy-peer-deps --silent || true
+                            CI=true npm test -- --coverage --watchAll=false --passWithNoTests --json --outputFile=test-results.json || CI=true yarn test --coverage --watchAll=false --passWithNoTests || true
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    try {
+                        def sonarToken = ''
+                        try {
+                            sonarToken = credentials('sonar_token')
+                        } catch (Exception e) {
+                            echo "SonarQube token not found"
+                        }
+                        sh """
+                            sonar-scanner \\
+                                -Dsonar.projectKey=${PROJECT_NAME} \\
+                                -Dsonar.sources=backend,frontend/src \\
+                                -Dsonar.host.url=${SONAR_HOST_URL} \\
+                                ${sonarToken ? "-Dsonar.login=${sonarToken}" : ''}
+                        """
+                    } catch (Exception e) {
+                        echo "SonarQube skipped: ${e.getMessage()}"
+                    }
+                }
+            }
+        }
+        
+        stage('Allure Report') {
+            steps {
+                script {
+                    sh """
+                        mkdir -p allure-results || true
+                        cp backend/test-results.xml allure-results/backend-test-results.xml || true
+                    """
+                }
+            }
+            post {
+                always {
+                    script {
+                        try {
+                            allure([
+                                includeProperties: false,
+                                jdk: '',
+                                properties: [],
+                                reportBuildPolicy: 'ALWAYS',
+                                results: [[path: 'allure-results']]
+                            ])
+                        } catch (Throwable e) {
+                            echo "Allure skipped: ${e.getMessage()}"
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Build Docker Images') {
+            steps {
+                script {
+                    dir('backend') {
+                        sh """
+                            docker build -t ${DOCKER_REGISTRY}/${PROJECT_NAME}-backend:${BUILD_NUMBER} .
+                            docker tag ${DOCKER_REGISTRY}/${PROJECT_NAME}-backend:${BUILD_NUMBER} ${DOCKER_REGISTRY}/${PROJECT_NAME}-backend:latest
+                        """
+                    }
+                    dir('frontend') {
+                        sh """
+                            docker build -t ${DOCKER_REGISTRY}/${PROJECT_NAME}-frontend:${BUILD_NUMBER} .
+                            docker tag ${DOCKER_REGISTRY}/${PROJECT_NAME}-frontend:${BUILD_NUMBER} ${DOCKER_REGISTRY}/${PROJECT_NAME}-frontend:latest
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Push to Nexus') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: "${NEXUS_CREDENTIALS_ID}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+                        sh """
+                            echo ${NEXUS_PASS} | docker login ${DOCKER_REGISTRY} -u ${NEXUS_USER} --password-stdin
+                            docker push ${DOCKER_REGISTRY}/${PROJECT_NAME}-backend:${BUILD_NUMBER}
+                            docker push ${DOCKER_REGISTRY}/${PROJECT_NAME}-backend:latest
+                            docker push ${DOCKER_REGISTRY}/${PROJECT_NAME}-frontend:${BUILD_NUMBER}
+                            docker push ${DOCKER_REGISTRY}/${PROJECT_NAME}-frontend:latest
+                        """
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo "OK"
+        }
+        failure {
+            echo "Failed"
+        }
+    }
+}

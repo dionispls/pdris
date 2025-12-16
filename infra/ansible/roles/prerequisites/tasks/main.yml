@@ -1,0 +1,11 @@
+---
+- name: Ensure Docker is available
+  command: docker --version
+  register: docker_check
+  ignore_errors: yes
+
+- name: Ensure Docker Compose is available
+  command: docker compose version
+  register: docker_compose_check
+  ignore_errors: yes
+

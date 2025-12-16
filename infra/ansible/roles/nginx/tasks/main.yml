@@ -1,0 +1,11 @@
+---
+- name: Ensure deployment directory exists
+  file:
+    path: "{{ ansible_env.HOME }}/foodgram"
+    state: directory
+
+- name: Copy nginx configuration
+  copy:
+    src: files/nginx.conf
+    dest: "{{ ansible_env.HOME }}/foodgram/nginx.conf"
+    mode: '0644'

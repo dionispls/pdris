@@ -1,0 +1,43 @@
+version: '3.8'
+services:
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    user: root
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /Users/kate/pdris:/workspace/foodgram:ro
+    networks:
+      - ci-network
+    restart: unless-stopped
+    command: >
+      bash -c "
+        apt-get update &&
+        apt-get install -y docker.io &&
+        /usr/local/bin/jenkins.sh
+      "
+
+  nexus:
+    image: sonatype/nexus3
+    container_name: nexus
+    ports:
+      - "8081:8081"
+      - "8082:8082"
+    volumes:
+      - nexus_data:/nexus-data
+    networks:
+      - ci-network
+    restart: unless-stopped
+
+volumes:
+  jenkins_home:
+  nexus_data:
+
+networks:
+  ci-network:
+    driver: bridge
+
