@@ -80,11 +80,11 @@ pipeline {
                         } catch (Exception e) {
                             echo "SonarQube token not found"
                         }
-                        def cmd = "sonar-scanner -Dsonar.projectKey=${PROJECT_NAME} -Dsonar.sources=backend,frontend/src -Dsonar.host.url=${SONAR_HOST_URL}"
+                        def sonarCmd = "sonar-scanner -Dsonar.projectKey=${PROJECT_NAME} -Dsonar.sources=backend,frontend/src -Dsonar.host.url=${SONAR_HOST_URL}"
                         if (sonarToken) {
-                            cmd += " -Dsonar.login=${sonarToken}"
+                            sonarCmd += " -Dsonar.login=${sonarToken}"
                         }
-                        sh cmd
+                        sh sonarCmd
                     } catch (Exception e) {
                         echo "SonarQube skipped: ${e.getMessage()}"
                     }
